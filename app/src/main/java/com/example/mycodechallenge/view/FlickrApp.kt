@@ -30,10 +30,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import coil.compose.rememberAsyncImagePainter
 import com.example.mycodechallenge.viewmodel.FetchImagesViewModel
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 @Composable
 fun FlickrApp(viewModel: FetchImagesViewModel) {
@@ -84,7 +88,6 @@ fun FlickrApp(viewModel: FetchImagesViewModel) {
     selectedImage?.let { image ->
         AlertDialog(
             onDismissRequest = { viewModel.clearSelection() },
-            title = { Text(image.title) },
             text = {
                 Column {
                     Image(
@@ -93,24 +96,32 @@ fun FlickrApp(viewModel: FetchImagesViewModel) {
                         modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = image.title,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    val htmlContent = "<html><body>${image.description}</body></html>"
                     AndroidView(
                         factory = { context ->
                             WebView(context).apply {
                                 settings.javaScriptEnabled = true
                                 settings.domStorageEnabled = true
                                 webViewClient = WebViewClient()
-                                loadData(image.description, "text/html", "utf-8")
+                                loadDataWithBaseURL(null, htmlContent, "text/html", "utf-8", null)
                                 webView = this
                             }
                         },
                         update = {
-                            it.loadData(image.description, "text/html", "utf-8")
+                            it.loadDataWithBaseURL(null, htmlContent, "text/html", "utf-8", null)
                         }
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("Author: ${image.author}")
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text("Published: ${image.publishedDate}")
+                    Text("Published: ${formatDate(image.publishedDate)}")
                 }
             },
             confirmButton = {
@@ -126,3 +137,14 @@ fun FlickrApp(viewModel: FetchImagesViewModel) {
     }
 }
 
+fun formatDate(rawDateString: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+        inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+        val outputFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
+        val date = inputFormat.parse(rawDateString)
+        outputFormat.format(date)
+    } catch (e: Exception) {
+        rawDateString // Fallback in case of error
+    }
+}
